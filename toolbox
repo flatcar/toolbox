@@ -50,9 +50,14 @@ if [ ! -f "${osrelease}" ] || systemctl is-failed -q "${machinename}" ; then
 	sudo chown "${USER}:" "${machinepath}"
 
 	if [[ -n "${have_docker_image}" ]]; then
-		riid=$(sudo --preserve-env rkt --insecure-options=image fetch "docker://${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}")
-		sudo --preserve-env rkt image extract --overwrite --rootfs-only "${riid}" "${machinepath}"
-		sudo --preserve-env rkt image rm "${riid}"
+		sudo --preserve-env docker pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
+		diid=$(sudo --preserve-env docker images --filter=reference=${TOOLBOX_DOCKER_IMAGE} --format "{{.ID}}")
+		sudo --preserve-env docker save --output=${diid}.tar.gz "${diid}"
+		sudo --preserve-env tar xvf ${diid}.tar.gz -C "${machinepath}"
+		layer_tarball=$(cat ${machinepath}/manifest.json | jq -r '.[].Layers[]')
+		sudo --preserve-env tar xvf ${machinepath}/${layer_tarball} -C "${machinepath}"
+		sudo --preserve-env rm -f ${machinepath}/${layer_tarball}
+		sudo --preserve-env docker rmi "${diid}"
 	elif [[ -n "${TOOLBOX_DOCKER_ARCHIVE}" ]]; then
 		tmpdir=$(mktemp -d -p /var/tmp/)
 		trap "sudo rm -rf ${tmpdir}" EXIT PIPE
