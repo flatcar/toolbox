@@ -21,7 +21,8 @@ esac
 
 TOOLBOX_USER=root
 TOOLBOX_DIRECTORY="/var/lib/toolbox"
-TOOLBOX_BIND="--bind=/:/media/root --bind=/usr:/media/root/usr --bind=/run:/media/root/run"
+TOOLBOX_BIND="--bind=/:/media/root --bind=/usr:/media/root/usr --bind=/run:/media/root/run --bind=/sys/fs/bpf:/sys/fs/bpf"
+TOOLBOX_FLAGS="--system-call-filter=bpf"
 # Ex: "--setenv=KEY=VALUE"
 TOOLBOX_ENV=""
 
@@ -76,6 +77,7 @@ fi
 sudo SYSTEMD_NSPAWN_SHARE_SYSTEM=1 systemd-nspawn \
 	--directory="${machinepath}" \
 	--capability=all \
+        ${TOOLBOX_FLAGS} \
         ${TOOLBOX_BIND} \
         ${TOOLBOX_ENV} \
 	--user="${TOOLBOX_USER}" "$@"
