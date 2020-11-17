@@ -70,6 +70,6 @@ Press ^] three times within 1s to kill container.
 
 ## Bugs
 
-Please use the [CoreOS issue tracker][bugs] to report all bugs, issues, and feature requests.
+Please use the [Flatcar issue tracker][bugs] to report all bugs, issues, and feature requests.
 
-[bugs]: https://github.com/coreos/bugs/issues/new?labels=component/toolbox
+[bugs]: https://github.com/kinvolk/flatcar/issues/new?labels=component/toolbox
