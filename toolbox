@@ -52,20 +52,19 @@ if [ ! -f "${osrelease}" ] || systemctl is-failed -q "${machinename}" ; then
 
 	if [[ -n "${have_docker_image}" ]]; then
 		sudo --preserve-env docker pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
-		diid=$(sudo --preserve-env docker images --filter=reference=${TOOLBOX_DOCKER_IMAGE} --format "{{.ID}}")
-		sudo --preserve-env docker save --output=${diid}.tar.gz "${diid}"
-		sudo --preserve-env tar xvf ${diid}.tar.gz -C "${machinepath}"
-		for layer_tarball in $(jq -r '.[].Layers[]' ${machinepath}/manifest.json); do
-			sudo --preserve-env tar xvf ${machinepath}/${layer_tarball} -C "${machinepath}"
-			sudo --preserve-env rm -f ${machinepath}/${layer_tarball}
-		done
-		sudo --preserve-env docker rmi "${diid}"
+		dcid=$(sudo --preserve-env docker create "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}")
+		sudo --preserve-env docker export -o "${machinepath}/${dcid}.tar" ${dcid}
+		sudo --preserve-env docker rm ${dcid}
+		sudo --preserve-env docker rmi "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}" || true
+		sudo tar xvf "${machinepath}/${dcid}.tar" -C "${machinepath}"
+		sudo rm -f "${machinepath}/${dcid}.tar"
 	elif [[ -n "${TOOLBOX_DOCKER_ARCHIVE}" ]]; then
 		tmpdir=$(mktemp -d -p /var/tmp/)
 		trap "sudo rm -rf ${tmpdir}" EXIT PIPE
 		wget -O- "${TOOLBOX_DOCKER_ARCHIVE}" | xz -cd | tar -C ${tmpdir} -xf -
-		layer=$(find ${tmpdir} -name layer.tar -type f)
-		sudo tar -C ${machinepath} -xf ${layer}
+		for layer in $(jq -r '.[].Layers[]' ${tmpdir}/manifest.json); do
+			sudo tar xvf "${tmpdir}/${layer}" -C "${machinepath}"
+		done
 		trap - EXIT PIPE
 		sudo rm -rf ${tmpdir}
 	else
