@@ -40,7 +40,9 @@ fi
 
 if [[ -n "${TOOLBOX_DOCKER_IMAGE}" ]] && [[ -n "${TOOLBOX_DOCKER_TAG}" ]]; then
 	TOOLBOX_NAME=${TOOLBOX_DOCKER_IMAGE}-${TOOLBOX_DOCKER_TAG}
-	have_docker_image="y"
+else
+	echo "Error: Invalid Docker image name: '${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}'" >&2
+	exit 1
 fi
 
 machinename=$(echo "${USER}-${TOOLBOX_NAME}" | sed -r 's/[^a-zA-Z0-9_.-]/_/g')
@@ -50,27 +52,15 @@ if [ ! -f "${osrelease}" ] || systemctl is-failed -q "${machinename}" ; then
 	sudo mkdir -p "${machinepath}"
 	sudo chown "${USER}:" "${machinepath}"
 
-	if [[ -n "${have_docker_image}" ]]; then
-		sudo --preserve-env docker pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
-		dcid=$(sudo --preserve-env docker create "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}")
-		sudo --preserve-env docker export -o "${machinepath}/${dcid}.tar" ${dcid}
-		sudo --preserve-env docker rm ${dcid}
-		sudo --preserve-env docker rmi "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}" || true
-		sudo tar xvf "${machinepath}/${dcid}.tar" -C "${machinepath}"
-		sudo rm -f "${machinepath}/${dcid}.tar"
-	elif [[ -n "${TOOLBOX_DOCKER_ARCHIVE}" ]]; then
-		tmpdir=$(mktemp -d -p /var/tmp/)
-		trap "sudo rm -rf ${tmpdir}" EXIT PIPE
-		wget -O- "${TOOLBOX_DOCKER_ARCHIVE}" | xz -cd | tar -C ${tmpdir} -xf -
-		for layer in $(jq -r '.[].Layers[]' ${tmpdir}/manifest.json); do
-			sudo tar xvf "${tmpdir}/${layer}" -C "${machinepath}"
-		done
-		trap - EXIT PIPE
-		sudo rm -rf ${tmpdir}
-	else
-		echo "Error: No toolbox filesystem specified." >&2
-		exit 1
-	fi
+	# Download and extract the image.
+	sudo --preserve-env docker pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
+	dcid=$(sudo --preserve-env docker create "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}")
+	sudo --preserve-env docker export -o "${machinepath}/${dcid}.tar" ${dcid}
+	sudo --preserve-env docker rm ${dcid}
+	sudo --preserve-env docker rmi "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}" || true
+	sudo tar xvf "${machinepath}/${dcid}.tar" -C "${machinepath}"
+	sudo rm -f "${machinepath}/${dcid}.tar"
+
 	sudo touch "${osrelease}"
 fi
 
