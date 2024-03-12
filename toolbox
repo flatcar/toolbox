@@ -68,7 +68,8 @@ if [ ! -f "${osrelease}" ] || systemctl is-failed -q "${machinename}" ; then
 		if ! sudo -E ctr images check | grep "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"; then
 			sudo -E ctr images pull --platform ${PLATFORM} ${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}
 		fi
-		sudo ctr images mount --rw --platform ${PLATFORM} ${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG} ${machinepath}
+		sudo ctr images mount --rw --platform ${PLATFORM} ${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG} "${machinepath}"
+		sudo ctr snapshots label "${machinepath}" containerd.io/gc.root=true
 	elif sudo -E docker stats --no-stream &> /dev/null; then
 		# Download and extract the image.
 		sudo --preserve-env docker pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
