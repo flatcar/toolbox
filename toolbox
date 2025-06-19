@@ -79,6 +79,18 @@ if [ ! -f "${osrelease}" ] || systemctl is-failed -q "${machinename}" ; then
 		sudo --preserve-env docker rmi "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}" || true
 		sudo tar xvf "${machinepath}/${dcid}.tar" -C "${machinepath}"
 		sudo rm -f "${machinepath}/${dcid}.tar"
+	elif sudo -E podman version &> /dev/null; then
+		is_downloaded=false
+		if ! sudo -E podman image exists "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"; then
+			sudo -E podman pull "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
+			is_downloaded=true
+		fi
+		imgpath=$(sudo -E podman image mount "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}")
+		sudo cp -af "${imgpath}/." "${machinepath}"
+		sudo -E podman image umount "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
+		if "${is_downloaded}" ; then
+			sudo -E podman image rm "${TOOLBOX_DOCKER_IMAGE}:${TOOLBOX_DOCKER_TAG}"
+		fi
 	else
 		echo "No supported container runtime found." >&2
 		exit 2
